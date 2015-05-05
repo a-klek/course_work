@@ -23,7 +23,8 @@ class Point3:
        self.y = y 
        self.z = z
        
-def sortPoints(cloud, x, y, z):
+def sortPoints(cloud, x, y, z):#сортировка точек в трёхмерном пространстве,
+                                #неиспользуется (не помню для чего она была нужна)
     for i in range(len(cloud)):
         l1 = m.sqrt((x-cloud[i].x)*(x-cloud[i].x)+
                     (y-cloud[i].y)*(y-cloud[i].y)+
@@ -40,22 +41,21 @@ def sortPoints(cloud, x, y, z):
        
    
 
-def getCorners(inputFile):
+def getCorners(inputFile):#ищет углы объекта на фотографии, основу взял из интернета
+                            #возвращает список точек
     
     foundPoints =[] 
     
     imcolor = cv.LoadImage(inputFile)
     image = cv.LoadImage(inputFile,cv.CV_LOAD_IMAGE_GRAYSCALE)
     cornerMap = cv.CreateMat(image.height, image.width, cv.CV_32FC1)
-    # OpenCV corner detection
+    # детектор углов Харриса
     cv.CornerHarris(image,cornerMap,3)
     
     for y in range(0, image.height):
         for x in range(0, image.width):
-            harris = cv.Get2D(cornerMap, y, x) # get the x,y value
-            # check the corner detector response
+            harris = cv.Get2D(cornerMap, y, x) 
             if harris[0] > 10e-06:
-                # draw a small circle on the original image
                 #cv.Circle(imcolor,(x,y),10,cv.RGB(155, 0, 25))
                 point = Point2(x,y)
                 foundPoints.append(point)
@@ -64,14 +64,16 @@ def getCorners(inputFile):
                 #cv.NamedWindow('Harris', cv.CV_WINDOW_AUTOSIZE)
                 #cv.ShowImage('Harris', imcolor) # show the image
                 #print foundPoints
+    
+    #инициируем массива флагов того, что точка уже учтена в результате
     used = []
     for i in range(len(foundPoints)):
         used.append(0)
-        result = []
+    result = []
         
     for i in range(len(foundPoints)):
         points = []
-            
+            #усреднение точек
         for j in range(len(foundPoints)):
             l1 = foundPoints[i].x-foundPoints[j].x
             l2 = foundPoints[i].y-foundPoints[j].y
@@ -80,6 +82,7 @@ def getCorners(inputFile):
                 used[j]=1
         sx = 0
         sy = 0
+        #запоминаем точку
         if len(points)!=0:
             for k in range(0,len(points)):
                 sx = sx+points[k].x
@@ -88,7 +91,8 @@ def getCorners(inputFile):
             result.append(p)
     return result
                             
-def rotateCloud(cloud,alfa, betta, gamma):
+def rotateCloud(cloud,alfa, betta, gamma):#аффинный поворот облака точек
+    #матрицы поворота
     Mx = numpy.array([[1,0,0],
                       [0,m.cos(alfa),-m.sin(alfa)],
                        [0, m.sin(alfa),-m.cos(alfa)]])
@@ -107,32 +111,33 @@ def rotateCloud(cloud,alfa, betta, gamma):
     for i in range(len(cloud)):
         p = numpy.array([cloud[i].x,cloud[i].y,cloud[i].z])
     
-        M.append(numpy.dot(numpy.dot(numpy.dot(Mx,My),Mz), p))
+        M.append(numpy.dot(numpy.dot(numpy.dot(Mx,My),Mz), p))#умножение матриц
     
-    result = []    
+    result = []   
+    #возврат результата в виде массива точек
     for i in range(len(M)):
         p3 = Point3(M[i][0],M[i][1],M[i][2])
         result.append(p3)
     return(result)       
 
-def getProection(cloud, left_bottom, right_top):
-    return cloud
 
-def midle(trngl):
+
+def midle(trngl):#середина треугольника (среднее арифметическое точек)
     mx = (trngl[0].x+trngl[1].x+trngl[2].x)/3
     my = (trngl[0].y+trngl[1].y+trngl[2].y)/3
     p = Point2(mx,my)
     return p
     
 
-def copyArray(arr):
+def copyArray(arr):#копирование массива точек
     result = []
     for i in range(len(arr)):
         el = arr[i]
         result.append(el)
     return result
     
-def getIdention(trngl, ident):
+def getIdention(trngl, ident):#смещение в треугольнике, чтобы погрешность при поиске
+                                #углов и сторон не влияло на результат (используется в getMeshes)
     result = [] 
     mdl = midle(trngl)
     result = []
@@ -151,14 +156,14 @@ def getIdention(trngl, ident):
         
     return result
 
-def triangelsEqual(t1,t2):
+def triangelsEqual(t1,t2): #проверяет один и тотже треугольник или нет
     result = True
     for i in range(3):
         if not((t1[i].x == t2[0].x and t1[i].y == t2[0].y)or(t1[i].x == t2[1].x and t1[i].y == t2[1].y)or(t1[i].x == t2[2].x and t1[i].y == t2[2].y)):
             result = False
     return result
 
-def used(triangles, trngl):
+def used(triangles, trngl): #входит ли треугольник в коллекцию
     result = False
     if len(triangles)==0:
         return False
@@ -168,7 +173,7 @@ def used(triangles, trngl):
     return result
                     
         
-def getTriangles(points):
+def getTriangles(points):#получить все треугольники по точкам
     result = []
     trngl =[]
     for i in range(len(points)):
@@ -184,7 +189,7 @@ def getTriangles(points):
                             result.append(trngl)
     return result
     
-def pointInTriangle(p, t):
+def pointInTriangle(p, t):#точка в треугольнике или нет
     a = (t[0].x - p.x)*(t[1].y - t[0].y) - (t[1].x-t[0].x)*(t[0].y-p.y)
     b = (t[1].x - p.x)*(t[2].y-t[1].y)-(t[2].x-t[1].x)*(t[1].y-p.y)
     c = (t[2].x-p.x)*(t[0].y-t[2].y)-(t[0].x-t[2].x)*(t[2].y-p.y)
@@ -195,12 +200,14 @@ def pointInTriangle(p, t):
                    
 
 
-def getMeshes(inputFile, corners, k, iden):
+def getMeshes(inputFile, corners, k, iden):#возвращает те треугольники, которые 
+                                            #нужно заполнять
     print 'getMeshes start'
     image = cv2.imread(inputFile)
     trngls = getTriangles(corners)
     use = []
-    
+    #инициализация массива маркеров использования итого треугольника
+    #+ границы поиска
     minX=image.shape[0]-1
     maxX=0
     minY=image.shape[1]-1
@@ -218,7 +225,7 @@ def getMeshes(inputFile, corners, k, iden):
             if trngls[i][j].y < minY:
                 minY = trngls[i][j].y
    
-                   
+    #поиск граней объекта через лапласиан              
     kernel_size = 1
     scale = 0.09
     delta = 0
@@ -231,12 +238,13 @@ def getMeshes(inputFile, corners, k, iden):
     for x in range(minX, maxX):
         for y in range(minY, maxY):
             for i in range(len(trngls)):
-                print x, '//', y, '//', i
+                print x, '//', y, '//', i#вывод для того, чтобы знать что функция выполняется и ничего не повисло
                 trngl = getIdention(trngls[i], iden)
-                if gray_lap[x][y] != 0:
+                if gray_lap[x][y] != 0:#если пиксель был помечен лапласианом, т.е.
+                                        #по нему проходит грань...
                     p = Point2(y,x)  
-                    if pointInTriangle(p, trngl):
-                        use[i]=False
+                    if pointInTriangle(p, trngl):#и лежит внутри треугольника, то
+                        use[i]=False             #треугольник не испльзуется
                         
     result = []
     
@@ -248,7 +256,7 @@ def getMeshes(inputFile, corners, k, iden):
 
 
 
-def resizeProectiion(pr, crn):
+def resizeProectiion(pr, crn):#аффинные преобразования для сопоставления двух наборов точек
     left = pr[0]
     right = pr[0]
     bottom = pr[0]
@@ -296,7 +304,7 @@ def resizeProectiion(pr, crn):
         
     return pr
   
-def copy(a):
+def copy(a):#ещё одно копирование, когда писал эту функцию, забыл про аналог выше...
     result = []
     for i in range(len(a)):
         x = a[i].x
@@ -305,7 +313,7 @@ def copy(a):
         result.append(p)
     return result
 
-def getConformity(pr, crn):
+def getConformity(pr, crn):#сопоставление углов объекта на фотографии точкам из облака
     pr1 = copy(pr)
     pr2 = resizeProectiion(pr1, crn)
     
@@ -314,7 +322,7 @@ def getConformity(pr, crn):
     for i in range(len(pr2)):
         use.append(False)
     
-    for i in range(len(crn)):
+    for i in range(len(crn)):#сопоставляются те, которые лежат на минимальном расстоянии
         neibor = 0
         l1 = m.sqrt((pr2[0].x-crn[i].x)*(pr2[0].x-crn[i].x)+(pr2[0].y-crn[i].y)*(pr2[0].y-crn[i].y))
         for j in range(len(pr2)):
@@ -326,19 +334,20 @@ def getConformity(pr, crn):
     return result
 
 
-def draw(photo_file, cloud, alfa, betta, gamma):
-    corners = getCorners(photo_file)
-    cloud = rotateCloud(cloud, alfa, betta, gamma)
+def draw(photo_file, cloud, alfa, betta, gamma):#Функция, собирающая всё вместе
+    corners = getCorners(photo_file)#взяли углы с фотки
+    cloud = rotateCloud(cloud, alfa, betta, gamma)#повернули облако на тот угол, с которого делалась фотография
     pr=[]
     
-    for i in range(len(cloud)):
-        p = Point2(cloud[i].x+270,cloud[i].z+300)
+    for i in range(len(cloud)):#берём проекцию
+        p = Point2(cloud[i].x+270,cloud[i].z+300)#числа взяты так, чтобы проекция рисовалась примерно по центру
         pr.append(p)
    
-    conf_pr = getConformity(pr, corners)
+    conf_pr = getConformity(pr, corners)#сопоставляем проекцию и углы
     triangles = []
-    meshes = getMeshes('cube.jpg', corners, 10, 10)
-    for i in range(len(meshes)):
+    meshes = getMeshes('cube.jpg', corners, 10, 10)#запоминаем нужные грани
+    for i in range(len(meshes)):#сопоставляем треугольники с проекции облака и треугольники с фотографии, 
+                                #чтобы удобнее было копировать кусочки изображения
         trngl=[]
         
         for j in range(3):
@@ -346,13 +355,14 @@ def draw(photo_file, cloud, alfa, betta, gamma):
                 if meshes[i][j].x == corners[k].x and meshes[i][j].y == corners[k].y:
                     trngl.append(conf_pr[k])
         triangles.append(trngl)
-        
+     
+    #наложение текстур
     image = cv2.imread(photo_file) 
     rows,cols,ch = image.shape
     new_image = numpy.zeros(image.shape, numpy.uint8)
     new_image = cv2.bitwise_not(new_image) 
     for i in range(len(meshes)):
-        
+        #точки треугольника с фотографии
         x1 = meshes[i][0].x
         y1 = meshes[i][0].y
         x2 = meshes[i][1].x
@@ -361,8 +371,8 @@ def draw(photo_file, cloud, alfa, betta, gamma):
         y3 = meshes[i][2].y
         pts1 = numpy.float32([[x1,y1],[x2,y2],[x3,y3]])
         roi_corners = numpy.array([[(x1,y1), (x2,y2), (x3,y3)]], dtype=numpy.int32)
-        mask = numpy.zeros(image.shape, dtype=numpy.uint8)
-        
+        mask = numpy.zeros(image.shape, dtype=numpy.uint8)#маска для фотографии
+        #точки треугольника проекции облака
         X1 = triangles[i][0].x
         Y1 = triangles[i][0].y
         X2 = triangles[i][1].x
@@ -371,17 +381,17 @@ def draw(photo_file, cloud, alfa, betta, gamma):
         Y3 = triangles[i][2].y       
         pts2 = numpy.float32([[X1,Y1],[X2,Y2],[X3,Y3]])
         roi2_corners = numpy.array([[(X1,Y1), (X2,Y2), (X3,Y3)]], dtype=numpy.int32)
-        mask2 = numpy.zeros(new_image.shape, dtype=numpy.uint8)
+        mask2 = numpy.zeros(new_image.shape, dtype=numpy.uint8)#маска для места, куда вставим изображение
         
-        cv2.fillPoly(mask, roi_corners, (255,255,255))
-        masked_image = cv2.bitwise_and(image, mask)
-        M = cv2.getAffineTransform(pts1,pts2)
+        cv2.fillPoly(mask, roi_corners, (255,255,255))#создаём маску
+        masked_image = cv2.bitwise_and(image, mask)#применяем маску к фотографии
+        M = cv2.getAffineTransform(pts1,pts2)#применяем аффинные преобразования
         warp_affin_img = cv2.warpAffine(masked_image,M,(cols,rows))
         
-        cv2.fillPoly(mask2, roi2_corners, (255,255,255))
-        mask2 = cv2.bitwise_not(mask2)
-        new_image = cv2.bitwise_and(new_image, mask2)
-        new_image = cv2.bitwise_or(new_image, warp_affin_img)
+        cv2.fillPoly(mask2, roi2_corners, (255,255,255))#создаём вторую маску
+        mask2 = cv2.bitwise_not(mask2)#инвентируем для обратного эффекта (заполнять нужно то, что вне треугольника)
+        new_image = cv2.bitwise_and(new_image, mask2)#применяем маску к прекции
+        new_image = cv2.bitwise_or(new_image, warp_affin_img)#объединяем изображения
     cv2.imshow('result',new_image)
         
 
@@ -429,29 +439,29 @@ cloud = [p1,p2,p3,p4,p5,p6,p7,p8]
 draw('cube.jpg', cloud, alfa, betta, gamma)
 
 
-cloud = rotateCloud(cloud, alfa, betta, gamma)
+#cloud = rotateCloud(cloud, alfa, betta, gamma)
 
-pr=[]
-img_white = cv2.imread('white.png')
-for i in range(len(cloud)):
-    p = Point2(cloud[i].x+270,cloud[i].z+300)
+#pr=[]
+#img_white = cv2.imread('white.png')
+#for i in range(len(cloud)):
+ #   p = Point2(cloud[i].x+270,cloud[i].z+300)
     
-    pr.append(p)
+  #  pr.append(p)
  
-pr = getConformity(pr, corners)
+#pr = getConformity(pr, corners)
 #meshes = getMeshes('cube.jpg', corners, 10, 10)
 #meshes2 = meshes[1] 
 #print meshes2
-img = cv2.imread('white.png')
+#img = cv2.imread('white.png')
 
  
-for i in range(len(pr)):
-    x = int(pr[i].x)
-    y = int(pr[i].y)
-    cv2.circle(img_white,(x,y),1,cv.RGB(155, 0, 25))
+#for i in range(len(pr)):
+ #   x = int(pr[i].x)
+  #  y = int(pr[i].y)
+   # cv2.circle(img_white,(x,y),1,cv.RGB(155, 0, 25))
     
-pr_trngl = getTriangles(pr)
-cv2.imshow('proection',img_white)
+#pr_trngl = getTriangles(pr)
+#cv2.imshow('proection',img_white)
 
 #for i in range(len(meshe)):
 #    img = cv2.imread('white.png')
